@@ -30,6 +30,7 @@ public:
     int countWhite();
 
     void setBoard(char data[]);
+    bitset<64> getValidMoves(Side side);
 };
 
 #endif

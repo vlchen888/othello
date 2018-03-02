@@ -178,3 +178,21 @@ void Board::setBoard(char data[]) {
         }
     }
 }
+
+
+bitset<64> Board::getValidMoves(Side side) {
+    /* naiive implementation as placeholder. */
+    Move *m = new Move(0, 0);
+    bitset<64> validMoves;
+    for (int x = 0; x < 8; x++) {
+        for (int y = 0; y < 8; y++) {
+            m->setX(x);
+            m->setY(y);
+            if (this->checkMove(m, side)) {
+                validMoves.set(x + 8 * y, 1);
+            }
+        }
+    }
+    delete m;
+    return validMoves;
+}
