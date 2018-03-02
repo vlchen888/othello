@@ -1,5 +1,7 @@
 #include "player.hpp"
+#include <climits>
 
+#define USE_DOT_PRODUCT_HEURISTIC 1
 // Victor was here!
 
 /*
@@ -97,6 +99,27 @@ Move *Player::getMove() {
  * @brief The heuristic for the minimax tree
  */
 int Player::heuristic(Board *curr, Side side) {
+    if (USE_DOT_PRODUCT_HEURISTIC) {
+        int heuristic_matrix[8][8] = {{4, -3, 2, 2, 2, 2, -3, 4},
+                                {-3, -4, -1, -1, -1, -1, -4, -3},
+                                {2, -1, 1, 0, 0, 1, -1, 2}, 
+                                {2, -1, 0, 1, 1, 0, -1, 2},
+                                {2, -1, 0, 1, 1, 0, -1, 2},
+                                {2, -1, 1, 0, 0, 1, -1, 2}, 
+                                {-3, -4, -1, -1, -1, -1, -4, -3},
+                                {4, -3, 2, 2, 2, 2, -3, 4}};
+        int score = 0;
+        for (int x = 0; x < 8; x++) {
+            for (int y = 0; y < 8; y++) {
+                if (curr->get(side, x, y)) {
+                    score += heuristic_matrix[x][y];
+                } else if (curr->get(flip(side), x, y)) {
+                    score -= heuristic_matrix[x][y];
+                }
+            }
+        }
+        return score;
+    } 
     return curr->count(side) - curr->count(flip(side));
 }
 
