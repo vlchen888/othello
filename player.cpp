@@ -17,6 +17,8 @@ Player::Player(Side side) {
     // Set colors
     mySide = side;
     oppSide = flip(side);
+    bestX = -1;
+    bestY = -1;
     /*
      * TODO: Do any initialization you need to do here (setting up the board,
      * precalculating things, etc.) However, remember that you will only have
@@ -64,8 +66,9 @@ Move *Player::getMove() {
     if(testingMinimax) {
         minimaxDepth = 2;
     } else {
-        minimaxDepth = 3;
+        minimaxDepth = 6;
     }
+    /*
     int bestScore = INT_MAX;
     Move *bestMove = nullptr;
     // Update with getValidMoves
@@ -91,8 +94,13 @@ Move *Player::getMove() {
         }
 
     }
-    
-    return bestMove;
+    */
+    alphabeta(board, true, mySide, minimaxDepth, -1*(1<<12), 1<<12);
+    if(bestX == -1 && bestY == -1) {
+        return nullptr;
+    }
+    Move *returnMove = new Move(bestX, bestY);
+    return returnMove;
 }
 
 /**
@@ -157,6 +165,55 @@ int Player::minimax(Board *curr, Side side, int depthLeft) {
     // so return -minmax for the largest possible gain we can have
     // (which is the strength of our position)
     return -1*minmax;
+}
+
+double Player::alphabeta(Board *curr, bool root,
+        Side side, int depth, int alpha, int beta) {
+    if(depth == 0) {
+        return heuristic(curr, side);
+    }
+
+    bitset<64> validMoves = curr->getValidMoves(side);
+    for(int i = 0; i < 8; i++) {
+        for(int j = 0; j < 8; j++) {
+            if(validMoves[i + 8*j]) {
+                Move move(i, j);
+                Board *tmp = curr->copy();
+                tmp->doMove(&move, side);
+                int score = -1*alphabeta(tmp, false, flip(side), depth-1, -1*beta, -1*alpha);
+                if(score > alpha) {
+                    alpha = score; // better move
+                    if(root) {
+                        bestX = i;
+                        bestY = j;
+                    }
+                }
+                if(score >= beta) {
+                    std::cerr << "Pruned! remaining depth " << depth << std::endl;
+                    return beta; // cutoff
+                }
+                // Very inefficient memory usage
+                delete tmp;
+            }
+        }
+    }
+    // Check if you can pass
+    if(curr->checkMove(nullptr, side)) {
+        int score = -1*alphabeta(curr, false, flip(side), depth-1, -1*beta, -1*alpha);
+        if(score > alpha) {
+            alpha = score; // better move
+            if(root) {
+                bestX = -1;
+                bestY = -1;
+            }
+        }
+        if(score >= beta) {
+            return beta; // cutoff
+        }
+    }
+
+    return alpha;
+
 }
 
 /**

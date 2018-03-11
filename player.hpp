@@ -15,6 +15,8 @@ private:
     Board* board;
     Side mySide;
     Side oppSide;
+    int bestX;
+    int bestY;
 public:
     Player(Side side);
     ~Player();
@@ -23,6 +25,8 @@ public:
     Move *getMove();
     int heuristic(Board *curr, Side side);
     int minimax(Board *curr, Side side, int depthLeft);
+    double alphabeta(Board *curr, bool root, Side side, int depth,
+            int alpha, int beta);
 
     void setBoard(Board *b);
 
