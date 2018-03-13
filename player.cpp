@@ -48,6 +48,7 @@ Player::~Player() {
  */
 Move *Player::doMove(Move *opponentsMove, int msLeft) {
 
+    //std::cerr << "Time left: " << msLeft<< std::endl;
     if (msLeft == -1) {
         msLeft = 10000;
     }
@@ -58,8 +59,12 @@ Move *Player::doMove(Move *opponentsMove, int msLeft) {
     // Process opponent's move by updating board
     board->doMove(opponentsMove, oppSide);
     // Find and do my move, and return
-    Move *myMove = getMove(int(param * msLeft / board->getNumMovesLeft()));
-    std::cerr << "Time left: " << msLeft<< std::endl;
+    Move *myMove;
+    if(board->getNumMovesLeft() > 8) {
+        myMove = getMove(int(param * max((msLeft-30000), 1000) / (board->getNumMovesLeft() - 8)));
+    } else {
+        myMove = getMove(1000);
+    }
     board->doMove(myMove, mySide);
     return myMove;
 }
@@ -70,7 +75,7 @@ Move *Player::doMove(Move *opponentsMove, int msLeft) {
  */
 Move *Player::getMove(int msLeft) {
 
-    std::cerr << "Time allotted: " << msLeft << std::endl;
+    //std::cerr << "Time allotted: " << msLeft << std::endl;
 
     int minimaxDepth;
     if(testingMinimax) {
@@ -80,7 +85,7 @@ Move *Player::getMove(int msLeft) {
     }
     // Now an instance variable, so we can pause the search inside the tree search 
     start = clock();
-    clock_t elapsed = 0;
+    //clock_t elapsed = 0;
     minimaxDepth = 1;
 
     outOfTime = false;
@@ -94,8 +99,8 @@ Move *Player::getMove(int msLeft) {
         currY = bestY;
 
         minimaxDepth += 1;
-        elapsed = clock() - start;
-        std::cerr << "Depth " << minimaxDepth << ", time elapsed: " << elapsed/CLOCKS_PER_SEC*1000 << std::endl;
+        //elapsed = clock() - start;
+        //std::cerr << "Depth " << minimaxDepth << ", time elapsed: " << elapsed/CLOCKS_PER_SEC*1000 << std::endl;
     }
     if(currX == -1 && currY == -1) {
         return nullptr;
@@ -117,14 +122,31 @@ int Player::heuristic(Board *curr, Side side) {
                                 {2, -1, 1, 0, 0, 1, -1, 2}, 
                                 {-3, -4, -1, -1, -1, -1, -4, -3},
                                 {4, -3, 2, 2, 2, 2, -3, 4}};*/
-        int heuristic_matrix[8][8] = {{424157,-42576,41797,33302,8324,26761,-45030,420591},
+
+        /*int heuristic_matrix[8][8] = {{424157,-42576,41797,33302,8324,26761,-45030,420591},
                                       {-47932,-55635,22561,-93,4857,-4899,-71650,-59483},
                                       {36078,22579,-17520,15674,11716,-18482,14945,39948},
                                       {31963,8028,31354,-9876,-15214,-6063,15413,27244},
                                       {22102,9408,13181,-16336,-13678,8721,16881,32272},
                                       {40561,19297,-1109,6537,7194,-10083,18860,64033},
                                       {-53181,-37002,12794,17028,12417,-10222,-47324,-46482},
-                                      {432860,-53916,26743,37664,34003,32778,-54982,438858}};
+                                      {432860,-53916,26743,37664,34003,32778,-54982,438858}};*/
+        /*int heuristic_matrix[8][8] = {{68469,-1995,9771,-5987,-7417,9940,-3420,68599},
+                                    {-963,-7655,4542,2462,2493,3693,-9430,-1472},
+                                    {11503,3921,1048,-181,-603,3526,3518,9777},
+                                    {-7358,2678,354,546,2017,623,2891,-8009},
+                                    {-9486,1581,-2064,2130,1578,-1708,1939,-8386},
+                                    {10568,2518,2704,-784,-912,2780,5283,9041},
+                                    {-4188,-9074,5644,1441,2731,2306,-7421,367},
+                                    {70069,648,12191,-8266,-5332,11629,-571,67518}};*/
+        int heuristic_matrix[8][8] = {{75622,-4726,12536,-6318,-8915,13567,-4339,72735},
+                                    {-2090,-8316,3950,1935,1942,4168,-11649,-2605},
+                                    {12253,1964,4014,-2745,-162,3340,301,11676},
+                                    {-7933,3139,-1613,1657,2939,94,2656,-7344},
+                                    {-8681,3100,-2114,1081,4133,-2381,2682,-5716},
+                                    {11323,4623,3639,-25,-808,4483,1923,12629},
+                                    {-2175,-8461,1932,2739,2159,2528,-9246,-3190},
+                                    {74049,-2666,13764,-7001,-8036,10493,-2407,71603}};
         int score = 0;
         for (int x = 0; x < 8; x++) {
             for (int y = 0; y < 8; y++) {
@@ -182,13 +204,6 @@ double Player::alphabeta(Board *curr, bool root,
         return heuristic(curr, side);
     }
 
-    if(curr->isDone()) {
-        if(curr->count(side) > curr->count(flip(side))) {
-            return 1<<29; // arbitrary large positive number
-        }
-        return -(1<<29); // arbitrary large negative number
-    }
-
     // Terminating search early. Maybe don't call this all the time
     // to save time
     int elapsed = clock() - start;
@@ -200,6 +215,17 @@ double Player::alphabeta(Board *curr, bool root,
     if(outOfTime) {
         return alpha;
     }
+
+    if(curr->isDone()) {
+        if(curr->count(side) > curr->count(flip(side))) {
+            return 1<<29; // arbitrary large positive number
+        } else if(curr->count(side) < curr->count(flip(side))) {
+            return -(1<<29); // arbitrary large negative number
+        } else {
+            return 0; // draw
+        }
+    }
+
     // Check if you need to pass
     if(!curr->hasMoves(side)) {
         int score = -1*alphabeta(curr, false, flip(side), depth-1,
