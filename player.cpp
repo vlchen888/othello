@@ -68,6 +68,11 @@ Move *Player::doMove(Move *opponentsMove, int msLeft) {
 Move *Player::getMove(int msLeft) {
 
     std::cerr << "Time allotted: " << msLeft << std::endl;
+    if (msLeft == -1) {
+        msLeft = 200;
+    }
+
+
     int minimaxDepth;
     if(testingMinimax) {
         minimaxDepth = 2;
@@ -77,12 +82,12 @@ Move *Player::getMove(int msLeft) {
     // Now an instance variable, so we can pause the search inside the tree search 
     start = clock();
     clock_t elapsed = 0;
-    minimaxDepth = 2;
+    minimaxDepth = 1;
 
     outOfTime = false;
     int currX = -1, currY = -1;
     while (minimaxDepth < MAX_DEPTH) {
-        alphabeta(board, true, mySide, minimaxDepth, -1*(1<<12), 1<<12, msLeft);
+        alphabeta(board, true, mySide, minimaxDepth, -1*(1<<29), 1<<29, msLeft);
         if(outOfTime) {
             break;
         }
@@ -105,14 +110,22 @@ Move *Player::getMove(int msLeft) {
  */
 int Player::heuristic(Board *curr, Side side) {
     if (USE_DOT_PRODUCT_HEURISTIC) {
-        int heuristic_matrix[8][8] = {{4, -3, 2, 2, 2, 2, -3, 4},
+        /*int heuristic_matrix[8][8] = {{4, -3, 2, 2, 2, 2, -3, 4},
                                 {-3, -4, -1, -1, -1, -1, -4, -3},
                                 {2, -1, 1, 0, 0, 1, -1, 2}, 
                                 {2, -1, 0, 1, 1, 0, -1, 2},
                                 {2, -1, 0, 1, 1, 0, -1, 2},
                                 {2, -1, 1, 0, 0, 1, -1, 2}, 
                                 {-3, -4, -1, -1, -1, -1, -4, -3},
-                                {4, -3, 2, 2, 2, 2, -3, 4}};
+                                {4, -3, 2, 2, 2, 2, -3, 4}};*/
+        int heuristic_matrix[8][8] = {{391733,-45540,53376,35951,6349,39432,-50173,373854},
+                                      {-52270,-40803,44368,6126,7934,41059,-42733,-45361},
+                                      {65076,37021,-4335,13723,26163,17075,34480,63839},
+                                      {-1316,20163,13959,1633,3127,13823,2486,22715},
+                                      {-272,4026,7769,-11556,2627,14762,8132,1658},
+                                      {49852,23582,28208,18737,13165,-4279,34708,53356},
+                                      {-32541,-73786,38507,16683,9163,31642,-54850,-33836},
+                                      {394318,-51010,49766,-9677,-6243,46531,-53673,370490}};
         int score = 0;
         for (int x = 0; x < 8; x++) {
             for (int y = 0; y < 8; y++) {
@@ -172,9 +185,9 @@ double Player::alphabeta(Board *curr, bool root,
 
     if(curr->isDone()) {
         if(curr->count(side) > curr->count(flip(side))) {
-            return 1<<10; // arbitrary large positive number
+            return 1<<29; // arbitrary large positive number
         }
-        return -(1<<10); // arbitrary large negative number
+        return -(1<<29); // arbitrary large negative number
     }
 
     // Terminating search early. Maybe don't call this all the time
