@@ -1,6 +1,6 @@
 #include "player.hpp"
 #include <climits>
-
+#include "time.h"
 #define USE_DOT_PRODUCT_HEURISTIC 1
 // Victor was here!
 
@@ -50,7 +50,7 @@ Move *Player::doMove(Move *opponentsMove, int msLeft) {
     // Process opponent's move by updating board
     board->doMove(opponentsMove, oppSide);
     // Find and do my move, and return
-    Move *myMove = getMove();
+    Move *myMove = getMove(msLeft / board->getNumMovesLeft());
     //std::cerr << "myMove: " << myMove << std::endl;
     board->doMove(myMove, mySide);
     return myMove;
@@ -60,7 +60,7 @@ Move *Player::doMove(Move *opponentsMove, int msLeft) {
  * @brief Using the current board state, choses the next move to make
  * using a minimax algorithm!
  */
-Move *Player::getMove() {
+Move *Player::getMove(int msLeft) {
 
     int minimaxDepth;
     if(testingMinimax) {
@@ -95,7 +95,17 @@ Move *Player::getMove() {
 
     }
     */
-    alphabeta(board, true, mySide, minimaxDepth, -1*(1<<12), 1<<12);
+    clock_t start;
+    start = clock();
+    clock_t elapsed = 0;
+    minimaxDepth = 2;
+    /* Stop when 60 * previous_ms is greater than time left. */
+    while ((elapsed / CLOCKS_PER_SEC * 1000) * 60 < msLeft) {
+        alphabeta(board, true, mySide, minimaxDepth, -1*(1<<12), 1<<12);
+
+        minimaxDepth += 1;
+        elapsed = clock() - start;
+    }
     if(bestX == -1 && bestY == -1) {
         return nullptr;
     }
