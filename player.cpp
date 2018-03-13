@@ -2,6 +2,7 @@
 #include <climits>
 #include "time.h"
 #define USE_DOT_PRODUCT_HEURISTIC 1
+#define MAX_DEPTH 30
 // Victor was here!
 
 /*
@@ -47,11 +48,15 @@ Player::~Player() {
  */
 Move *Player::doMove(Move *opponentsMove, int msLeft) {
 
+
+    // For scaling the amount of time each move is allotted. Should be
+    // less than 2 to ensure that we do not run out of time.
+    double param = 2;
     // Process opponent's move by updating board
     board->doMove(opponentsMove, oppSide);
     // Find and do my move, and return
-    Move *myMove = getMove(msLeft / board->getNumMovesLeft());
-    //std::cerr << "myMove: " << myMove << std::endl;
+    Move *myMove = getMove(int(param * msLeft / board->getNumMovesLeft()));
+    std::cerr << "Time left: " << msLeft<< std::endl;
     board->doMove(myMove, mySide);
     return myMove;
 }
@@ -62,54 +67,36 @@ Move *Player::doMove(Move *opponentsMove, int msLeft) {
  */
 Move *Player::getMove(int msLeft) {
 
+    std::cerr << "Time allotted: " << msLeft << std::endl;
     int minimaxDepth;
     if(testingMinimax) {
         minimaxDepth = 2;
     } else {
         minimaxDepth = 6;
     }
-    /*
-    int bestScore = INT_MAX;
-    Move *bestMove = nullptr;
-    // Update with getValidMoves
-    bitset<64> validMoves = board->getValidMoves(mySide);
-    for(int i = 0; i < 8; i++) {
-        for(int j = 0; j < 8; j++) {
-            if(validMoves[i + 8*j]) {
-                Move *move = new Move(i, j);
-                // Inefficient memory usage again
-                Board *tmp = board->copy();
-                tmp->doMove(move, mySide);
-                int oppScore = minimax(tmp, flip(mySide), minimaxDepth - 1);
-                // Update best move found
-                if(oppScore < bestScore) {
-                    bestScore = oppScore;
-                    delete bestMove;
-                    bestMove = move;
-                } else {
-                    delete move;
-                }
-                delete tmp;
-            }
-        }
-
-    }
-    */
-    clock_t start;
+    // Now an instance variable, so we can pause the search inside the tree search 
     start = clock();
     clock_t elapsed = 0;
     minimaxDepth = 2;
-    /* Stop when 60 * previous_ms is greater than time left. */
-    while ((elapsed / CLOCKS_PER_SEC * 1000) * 60 < msLeft) {
-        alphabeta(board, true, mySide, minimaxDepth, -1*(1<<12), 1<<12);
+
+    outOfTime = false;
+    int currX = -1, currY = -1;
+    while (minimaxDepth < MAX_DEPTH) {
+        alphabeta(board, true, mySide, minimaxDepth, -1*(1<<12), 1<<12, msLeft);
+        if(outOfTime) {
+            break;
+        }
+        currX = bestX;
+        currY = bestY;
 
         minimaxDepth += 1;
         elapsed = clock() - start;
+        std::cerr << "Depth " << minimaxDepth << ", time elapsed: " << elapsed/CLOCKS_PER_SEC*1000 << std::endl;
     }
-    if(bestX == -1 && bestY == -1) {
+    if(currX == -1 && currY == -1) {
         return nullptr;
     }
-    Move *returnMove = new Move(bestX, bestY);
+    Move *returnMove = new Move(currX, currY);
     return returnMove;
 }
 
@@ -178,38 +165,33 @@ int Player::minimax(Board *curr, Side side, int depthLeft) {
 }
 
 double Player::alphabeta(Board *curr, bool root,
-        Side side, int depth, int alpha, int beta) {
+        Side side, int depth, int alpha, int beta, int msLeft) {
     if(depth == 0) {
         return heuristic(curr, side);
     }
 
-    bitset<64> validMoves = curr->getValidMoves(side);
-    for(int i = 0; i < 8; i++) {
-        for(int j = 0; j < 8; j++) {
-            if(validMoves[i + 8*j]) {
-                Move move(i, j);
-                Board *tmp = curr->copy();
-                tmp->doMove(&move, side);
-                int score = -1*alphabeta(tmp, false, flip(side), depth-1, -1*beta, -1*alpha);
-                if(score > alpha) {
-                    alpha = score; // better move
-                    if(root) {
-                        bestX = i;
-                        bestY = j;
-                    }
-                }
-                if(score >= beta) {
-                    std::cerr << "Pruned! remaining depth " << depth << std::endl;
-                    return beta; // cutoff
-                }
-                // Very inefficient memory usage
-                delete tmp;
-            }
+    if(curr->isDone()) {
+        if(curr->count(side) > curr->count(flip(side))) {
+            return 1<<10; // arbitrary large positive number
         }
+        return -(1<<10); // arbitrary large negative number
     }
-    // Check if you can pass
-    if(curr->checkMove(nullptr, side)) {
-        int score = -1*alphabeta(curr, false, flip(side), depth-1, -1*beta, -1*alpha);
+
+    // Terminating search early. Maybe don't call this all the time
+    // to save time
+    int elapsed = clock() - start;
+    if(elapsed*1000/CLOCKS_PER_SEC > msLeft) {
+        //std::cerr << "Termination time: " << elapsed << std::endl;
+        outOfTime = true;
+    }
+
+    if(outOfTime) {
+        return alpha;
+    }
+    // Check if you need to pass
+    if(!curr->hasMoves(side)) {
+        int score = -1*alphabeta(curr, false, flip(side), depth-1,
+                -1*beta, -1*alpha, msLeft);
         if(score > alpha) {
             alpha = score; // better move
             if(root) {
@@ -219,6 +201,34 @@ double Player::alphabeta(Board *curr, bool root,
         }
         if(score >= beta) {
             return beta; // cutoff
+        }
+        return alpha;
+    }
+
+
+    bitset<64> validMoves = curr->getValidMoves(side);
+    for(int i = 0; i < 8; i++) {
+        for(int j = 0; j < 8; j++) {
+            if(validMoves[i + 8*j]) {
+                Move move(i, j);
+                Board *tmp = curr->copy();
+                tmp->doMove(&move, side);
+                int score = -1*alphabeta(tmp, false, flip(side), depth-1,
+                        -1*beta, -1*alpha, msLeft);
+                if(score > alpha) {
+                    alpha = score; // better move
+                    if(root) {
+                        bestX = i;
+                        bestY = j;
+                    }
+                }
+                if(score >= beta) {
+                    //std::cerr << "Pruned! remaining depth " << depth << std::endl;
+                    return beta; // cutoff
+                }
+                // Very inefficient memory usage
+                delete tmp;
+            }
         }
     }
 

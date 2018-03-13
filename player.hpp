@@ -17,16 +17,18 @@ private:
     Side oppSide;
     int bestX;
     int bestY;
+    clock_t start;
+    bool outOfTime;
 public:
     Player(Side side);
     ~Player();
 
     Move *doMove(Move *opponentsMove, int msLeft);
-    Move *getMove();
+    Move *getMove(int msLeft);
     int heuristic(Board *curr, Side side);
     int minimax(Board *curr, Side side, int depthLeft);
     double alphabeta(Board *curr, bool root, Side side, int depth,
-            int alpha, int beta);
+            int alpha, int beta, int msLeft);
 
     void setBoard(Board *b);
 
