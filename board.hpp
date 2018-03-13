@@ -29,6 +29,7 @@ public:
     int count(Side side);
     int countBlack();
     int countWhite();
+    int getNumMovesLeft();
 
     void setBoard(char data[]);
     bitset<64> getValidMoves(Side side);

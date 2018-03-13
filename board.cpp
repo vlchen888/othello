@@ -162,6 +162,10 @@ int Board::countWhite() {
     return taken.count() - black.count();
 }
 
+int Board::getNumMovesLeft() {
+    return 64 - taken.count();
+}
+
 /*
  * Sets the board state given an 8x8 char array where 'w' indicates a white
  * piece and 'b' indicates a black piece. Mainly for testing purposes.
